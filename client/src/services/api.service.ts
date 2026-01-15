@@ -54,14 +54,22 @@ export class ApiService {
   /**
    * Déconnecte un compte
    */
-  async disconnectAccount(provider: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/unipile/disconnect/${provider}`, {
+  async disconnectAccount(provider: string): Promise<{ success: boolean }> {
+    const url = `${API_BASE_URL}/api/unipile/disconnect/${provider}`;
+    console.log(`📡 URL: ${url}`);
+    
+    const response = await fetch(url, {
       method: 'DELETE',
     });
+
+    console.log(`📥 Réponse: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
       throw new Error(errorData.error || `Erreur ${response.status}: ${response.statusText}`);
     }
+
+    const data = await response.json().catch(() => ({ success: true }));
+    return data;
   }
 }

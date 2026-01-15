@@ -76,8 +76,22 @@ router.post('/webhook', async (req, res) => {
     console.log('Webhook reçu:', { account_id, provider, status, username, email });
 
     if (account_id && provider) {
+      // Normaliser le provider (gérer GOOGLE_OAUTH, MICROSOFT_OAUTH, etc.)
+      let normalizedProvider = provider;
+      if (provider.includes('GOOGLE')) {
+        normalizedProvider = 'GOOGLE';
+      } else if (provider.includes('MICROSOFT')) {
+        normalizedProvider = 'MICROSOFT';
+      }
+      
       // Convertir le provider API en nom frontend pour le stockage
-      const frontendProvider = API_TO_FRONTEND[provider] || provider.toLowerCase();
+      const frontendProvider = API_TO_FRONTEND[normalizedProvider] || API_TO_FRONTEND[provider] || provider.toLowerCase();
+      
+      console.log('🔄 Normalisation du provider:', {
+        original: provider,
+        normalized: normalizedProvider,
+        frontendProvider,
+      });
       
       // Récupérer les détails du compte depuis l'API Unipile
       try {
@@ -269,16 +283,39 @@ router.delete('/disconnect/:provider', async (req, res) => {
   try {
     const { provider } = req.params;
     
+    console.log(`🔴 Demande de déconnexion reçue pour: ${provider}`);
+    console.log(`📦 Comptes actuellement stockés:`, Array.from(connectedAccounts.keys()));
+    
     if (!FRONTEND_TO_API[provider]) {
+      console.error(`❌ Provider invalide: ${provider}`);
       return res.status(400).json({ error: 'Provider invalide' });
     }
 
+    // Récupérer le compte avant de le supprimer pour avoir l'accountId
+    const account = connectedAccounts.get(provider);
+    console.log(`🔍 Compte trouvé dans le stockage:`, account ? { accountId: account.accountId, provider: account.provider } : 'aucun');
+
+    // Supprimer le compte via l'API Unipile si on a l'accountId
+    if (account?.accountId) {
+      try {
+        await unipileService.deleteAccount(account.accountId);
+        console.log(`✅ Compte ${provider} supprimé de Unipile: ${account.accountId}`);
+      } catch (error) {
+        console.warn(`⚠️  Erreur lors de la suppression Unipile (on continue quand même):`, error);
+        // On continue même si la suppression Unipile échoue
+      }
+    } else {
+      console.warn(`⚠️  Aucun accountId trouvé pour ${provider}, suppression uniquement du stockage local`);
+    }
+
     // Supprimer du stockage local
-    connectedAccounts.delete(provider);
+    const deleted = connectedAccounts.delete(provider);
+    console.log(`🗑️  Suppression du stockage local pour ${provider}: ${deleted ? 'réussie' : 'échec (non trouvé)'}`);
+    console.log(`📦 Comptes restants:`, Array.from(connectedAccounts.keys()));
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Erreur disconnect:', error);
+    console.error('❌ Erreur disconnect:', error);
     res.status(500).json({
       error: error instanceof Error ? error.message : 'Erreur serveur',
     });

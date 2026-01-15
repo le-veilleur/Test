@@ -225,4 +225,36 @@ export class UnipileService {
       throw error;
     }
   }
+
+  /**
+   * Supprime un compte via son account_id
+   */
+  async deleteAccount(accountId: string): Promise<void> {
+    try {
+      console.log(`🗑️  Tentative de suppression du compte Unipile: ${accountId}`);
+      const response = await axios.delete(
+        `${API_BASE_URL}/accounts/${accountId}`,
+        { headers: this.getHeaders() }
+      );
+
+      console.log(`✅ Compte supprimé de Unipile: ${accountId}`, {
+        status: response.status,
+        data: response.data,
+      });
+    } catch (error: unknown) {
+      console.error(`❌ Erreur lors de la suppression du compte ${accountId}:`, error);
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        // Si le compte n'existe pas déjà (404), on considère que c'est OK
+        if (status === 404) {
+          console.warn(`⚠️  Compte ${accountId} non trouvé dans Unipile (déjà supprimé?)`);
+          return;
+        }
+        throw new Error(
+          `Erreur Unipile: ${error.response?.data?.message || error.message}`
+        );
+      }
+      throw error;
+    }
+  }
 }

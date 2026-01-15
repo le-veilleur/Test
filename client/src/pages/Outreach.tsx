@@ -46,14 +46,29 @@ export const Outreach: React.FC = () => {
   };
 
   const handleDisconnect = async (provider: keyof AccountsStatus) => {
-    if (window.confirm(`Êtes-vous sûr de vouloir déconnecter votre compte ${provider} ?`)) {
-      try {
-        await apiService.disconnectAccount(provider);
-        await loadAccountStatus();
-      } catch (error) {
-        console.error(`Erreur lors de la déconnexion ${provider}:`, error);
-        alert(`Erreur lors de la déconnexion: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
-      }
+    console.log(`🔴 handleDisconnect appelé pour: ${provider}`);
+    
+    const confirmed = window.confirm(`Êtes-vous sûr de vouloir déconnecter votre compte ${provider} ?`);
+    console.log(`❓ Confirmation: ${confirmed}`);
+    
+    if (!confirmed) {
+      return;
+    }
+    
+    try {
+      console.log(`⏳ Début de la déconnexion pour ${provider}...`);
+      console.log(`🔴 Appel API de déconnexion pour: ${provider}`);
+      
+      const response = await apiService.disconnectAccount(provider);
+      console.log(`📥 Réponse:`, response);
+      console.log(`✅ Déconnexion réussie:`, response);
+      
+      console.log(`🔄 Rechargement du statut des comptes...`);
+      await loadAccountStatus();
+      console.log(`✅ Fin de la déconnexion pour ${provider}`);
+    } catch (error) {
+      console.error(`❌ Erreur lors de la déconnexion ${provider}:`, error);
+      alert(`Erreur lors de la déconnexion: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     }
   };
 
